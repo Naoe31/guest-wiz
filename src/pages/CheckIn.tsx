@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle, Crown, User, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, Crown, User, Loader2, Scan, Keyboard } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 
 type Guest = {
@@ -17,7 +19,10 @@ type Guest = {
 
 const CheckIn = () => {
   const [scanning, setScanning] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const [manualCode, setManualCode] = useState("");
   const [checkedInGuest, setCheckedInGuest] = useState<Guest | null>(null);
+  const [html5QrCode, setHtml5QrCode] = useState<Html5Qrcode | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -35,31 +40,68 @@ const CheckIn = () => {
   const startScanner = async () => {
     setScanning(true);
     setCheckedInGuest(null);
+    setManualMode(false);
 
     try {
-      const html5QrCode = new Html5Qrcode("qr-reader");
+      const scanner = new Html5Qrcode("qr-reader");
+      setHtml5QrCode(scanner);
       
-      await html5QrCode.start(
+      await scanner.start(
         { facingMode: "environment" },
         {
           fps: 10,
           qrbox: { width: 250, height: 250 },
         },
         async (decodedText) => {
-          await html5QrCode.stop();
+          await scanner.stop();
+          setHtml5QrCode(null);
           await handleCheckIn(decodedText);
         },
         (errorMessage) => {
           // Silent error handling for continuous scanning
         }
       );
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Camera error:", err);
+      setScanning(false);
+      
+      // More detailed error message
+      let errorMsg = "Camera access denied. ";
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        errorMsg += "Please allow camera access in your browser settings.";
+      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        errorMsg += "No camera found on this device.";
+      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        errorMsg += "Camera is in use by another application.";
+      } else {
+        errorMsg += "Try using manual entry instead.";
+      }
+      
       toast({
-        title: "Error",
-        description: "Failed to start camera. Please check permissions.",
+        title: "Camera Error",
+        description: errorMsg,
         variant: "destructive",
       });
-      setScanning(false);
+    }
+  };
+
+  const stopScanner = async () => {
+    if (html5QrCode) {
+      try {
+        await html5QrCode.stop();
+        setHtml5QrCode(null);
+      } catch (err) {
+        console.error("Error stopping scanner:", err);
+      }
+    }
+    setScanning(false);
+  };
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (manualCode.trim()) {
+      await handleCheckIn(manualCode.trim());
+      setManualCode("");
     }
   };
 
@@ -138,15 +180,52 @@ const CheckIn = () => {
             <p className="text-muted-foreground">Scan guest QR codes to check them in</p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {!scanning && !checkedInGuest && (
+            {!scanning && !manualMode && !checkedInGuest && (
               <div className="flex flex-col items-center gap-6 py-8">
                 <div className="w-32 h-32 bg-gradient-to-br from-primary to-accent rounded-3xl flex items-center justify-center" style={{ boxShadow: 'var(--shadow-glow)' }}>
                   <CheckCircle className="w-16 h-16 text-primary-foreground" />
                 </div>
-                <Button size="lg" onClick={startScanner} className="w-full max-w-xs">
-                  Start Scanning
-                </Button>
+                <div className="w-full max-w-xs space-y-3">
+                  <Button size="lg" onClick={startScanner} className="w-full">
+                    <Scan className="w-5 h-5 mr-2" />
+                    Scan QR Code
+                  </Button>
+                  <Button size="lg" onClick={() => setManualMode(true)} variant="outline" className="w-full">
+                    <Keyboard className="w-5 h-5 mr-2" />
+                    Enter Code Manually
+                  </Button>
+                </div>
               </div>
+            )}
+
+            {manualMode && !checkedInGuest && (
+              <form onSubmit={handleManualSubmit} className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="manualCode">Guest QR Code</Label>
+                  <Input
+                    id="manualCode"
+                    value={manualCode}
+                    onChange={(e) => setManualCode(e.target.value)}
+                    placeholder="Enter guest QR code"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" className="flex-1">
+                    Check In
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setManualMode(false);
+                      setManualCode("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
             )}
 
             {scanning && (
@@ -155,17 +234,25 @@ const CheckIn = () => {
                   id="qr-reader"
                   className="rounded-lg overflow-hidden border-2 border-primary"
                 />
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    const html5QrCode = new Html5Qrcode("qr-reader");
-                    html5QrCode.stop();
-                    setScanning(false);
-                  }}
-                >
-                  Cancel
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={stopScanner}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => {
+                      stopScanner();
+                      setManualMode(true);
+                    }}
+                  >
+                    Enter Manually
+                  </Button>
+                </div>
               </div>
             )}
 
