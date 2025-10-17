@@ -37,10 +37,54 @@ const CheckIn = () => {
     }
   };
 
+  const requestCameraPermission = async () => {
+    try {
+      // Explicitly request camera permission first
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "environment" } 
+      });
+      
+      // Stop the stream immediately after getting permission
+      stream.getTracks().forEach(track => track.stop());
+      
+      return true;
+    } catch (err: any) {
+      console.error("Permission error:", err);
+      
+      let errorMsg = "";
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        errorMsg = "Camera access denied. Please allow camera access when prompted and try again.";
+      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        errorMsg = "No camera found on this device. Please use manual entry instead.";
+      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        errorMsg = "Camera is in use by another application. Please close other apps using the camera.";
+      } else if (err.name === "NotSupportedError") {
+        errorMsg = "Camera not supported. Please ensure you're using HTTPS or localhost.";
+      } else {
+        errorMsg = "Unable to access camera. Try using manual entry instead.";
+      }
+      
+      toast({
+        title: "Camera Permission Required",
+        description: errorMsg,
+        variant: "destructive",
+      });
+      
+      return false;
+    }
+  };
+
   const startScanner = async () => {
     setScanning(true);
     setCheckedInGuest(null);
     setManualMode(false);
+
+    // Request permission first
+    const hasPermission = await requestCameraPermission();
+    if (!hasPermission) {
+      setScanning(false);
+      return;
+    }
 
     try {
       const scanner = new Html5Qrcode("qr-reader");
@@ -64,22 +108,11 @@ const CheckIn = () => {
     } catch (err: any) {
       console.error("Camera error:", err);
       setScanning(false);
-      
-      // More detailed error message
-      let errorMsg = "Camera access denied. ";
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        errorMsg += "Please allow camera access in your browser settings.";
-      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-        errorMsg += "No camera found on this device.";
-      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
-        errorMsg += "Camera is in use by another application.";
-      } else {
-        errorMsg += "Try using manual entry instead.";
-      }
+      setHtml5QrCode(null);
       
       toast({
-        title: "Camera Error",
-        description: errorMsg,
+        title: "Scanner Error",
+        description: "Failed to start scanner. Please try again or use manual entry.",
         variant: "destructive",
       });
     }
