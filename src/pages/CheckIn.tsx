@@ -34,6 +34,18 @@ const CheckIn = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       navigate("/auth");
+      return;
+    }
+
+    // Check if user is approved
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("approved")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (roleData && !roleData.approved) {
+      navigate("/approval-pending");
     }
   };
 

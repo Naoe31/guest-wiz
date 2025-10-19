@@ -17,20 +17,36 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/");
-      }
-    });
+    checkAuthAndApproval();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        navigate("/");
+        await checkAuthAndApproval();
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const checkAuthAndApproval = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session) {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("approved, role")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (data) {
+        if (!data.approved) {
+          navigate("/approval-pending");
+        } else {
+          navigate("/guest-list");
+        }
+      }
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();

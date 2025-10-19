@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Crown, User, LogOut, QrCode as QrCodeIcon, Check } from "lucide-react";
+import { Loader2, Plus, Trash2, Crown, User, LogOut, QrCode as QrCodeIcon, Check, Users } from "lucide-react";
 import QRCode from "qrcode";
 
 type Guest = {
@@ -51,6 +51,18 @@ const GuestList = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       navigate("/auth");
+      return;
+    }
+
+    // Check if user is approved
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("approved")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (roleData && !roleData.approved) {
+      navigate("/approval-pending");
     }
   };
 
@@ -272,6 +284,12 @@ const GuestList = () => {
             <p className="text-muted-foreground">Manage your event guest list</p>
           </div>
           <div className="flex gap-2">
+            {userRole === 'admin' && (
+              <Button onClick={() => navigate("/user-management")} variant="outline">
+                <Users className="w-4 h-4 mr-2" />
+                Manage Users
+              </Button>
+            )}
             <Button onClick={() => navigate("/check-in")} variant="outline">
               <QrCodeIcon className="w-4 h-4 mr-2" />
               Check-In
