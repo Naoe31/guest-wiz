@@ -301,6 +301,11 @@ const CheckIn = () => {
                       )}
                     </div>
                   </div>
+                  <div className="mb-4">
+                    <span className="inline-block px-4 py-2 rounded-full text-xs font-bold bg-green-500/10 text-green-600 mb-3">
+                      ✓ CHECKED IN
+                    </span>
+                  </div>
                   <h3 className="text-2xl font-bold mb-2">{checkedInGuest.name}</h3>
                   {checkedInGuest.email && (
                     <p className="text-muted-foreground mb-4">{checkedInGuest.email}</p>

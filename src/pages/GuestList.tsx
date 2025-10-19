@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Crown, User, LogOut, QrCode as QrCodeIcon } from "lucide-react";
+import { Loader2, Plus, Trash2, Crown, User, LogOut, QrCode as QrCodeIcon, Check } from "lucide-react";
 import QRCode from "qrcode";
 
 type Guest = {
@@ -26,6 +27,7 @@ type Guest = {
 const GuestList = () => {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<'admin' | 'staff' | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
@@ -42,12 +44,28 @@ const GuestList = () => {
   useEffect(() => {
     checkAuth();
     fetchGuests();
+    fetchUserRole();
   }, []);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       navigate("/auth");
+    }
+  };
+
+  const fetchUserRole = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!error && data) {
+        setUserRole(data.role);
+      }
     }
   };
 
@@ -122,6 +140,38 @@ const GuestList = () => {
     }
   };
 
+  const handleManualCheckIn = async (guest: Guest) => {
+    if (guest.checked_in) {
+      toast({
+        title: "Already Checked In",
+        description: `${guest.name} is already checked in`,
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("guests")
+      .update({
+        checked_in: true,
+        checked_in_at: new Date().toISOString(),
+      })
+      .eq("id", guest.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to check in guest",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success!",
+        description: `${guest.name} checked in successfully`,
+      });
+      fetchGuests();
+    }
+  };
+
   const handleShowQR = async (guest: Guest) => {
     setSelectedGuest(guest);
     const qrDataUrl = await QRCode.toDataURL(guest.qr_code, {
@@ -157,7 +207,12 @@ const GuestList = () => {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-foreground">{guest.name}</h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-foreground">{guest.name}</h3>
+                <Badge variant={guest.guest_type === "vip" ? "default" : "secondary"} className={guest.guest_type === "vip" ? "bg-vip text-vip-foreground" : ""}>
+                  {guest.guest_type.toUpperCase()}
+                </Badge>
+              </div>
               {guest.email && <p className="text-sm text-muted-foreground">{guest.email}</p>}
               {guest.phone && <p className="text-sm text-muted-foreground">{guest.phone}</p>}
               <div className="flex items-center gap-2 mt-2">
@@ -168,6 +223,17 @@ const GuestList = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            {!guest.checked_in && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => handleManualCheckIn(guest)}
+                className="bg-green-600 hover:bg-green-700"
+                title="Check in guest"
+              >
+                <Check className="w-4 h-4" />
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -175,13 +241,15 @@ const GuestList = () => {
             >
               <QrCodeIcon className="w-4 h-4" />
             </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => handleDeleteGuest(guest.id)}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            {userRole === 'admin' && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => handleDeleteGuest(guest.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>
@@ -193,7 +261,14 @@ const GuestList = () => {
       <div className="container mx-auto p-6 max-w-6xl">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Guest Management</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold mb-2">Guest Management</h1>
+              {userRole && (
+                <Badge variant={userRole === 'admin' ? 'default' : 'secondary'}>
+                  {userRole.toUpperCase()}
+                </Badge>
+              )}
+            </div>
             <p className="text-muted-foreground">Manage your event guest list</p>
           </div>
           <div className="flex gap-2">
@@ -208,13 +283,14 @@ const GuestList = () => {
           </div>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="mb-6">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Guest
-            </Button>
-          </DialogTrigger>
+        {userRole === 'admin' && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="mb-6">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Guest
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Guest</DialogTitle>
@@ -269,6 +345,7 @@ const GuestList = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
 
         <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
           <DialogContent>
