@@ -9,8 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Crown, User, LogOut, QrCode as QrCodeIcon, Check, Users } from "lucide-react";
+import { Loader2, Plus, Trash2, Crown, User, LogOut, QrCode as QrCodeIcon, Users, Search } from "lucide-react";
 import QRCode from "qrcode";
 
 type Guest = {
@@ -30,6 +31,7 @@ const GuestList = () => {
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
   const [qrCodeData, setQrCodeData] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     guest_type: "regular" as "vip" | "regular",
@@ -148,33 +150,27 @@ const GuestList = () => {
     }
   };
 
-  const handleManualCheckIn = async (guest: Guest) => {
-    if (guest.checked_in) {
-      toast({
-        title: "Already Checked In",
-        description: `${guest.name} is already checked in`,
-      });
-      return;
-    }
+  const handleCheckInToggle = async (guest: Guest) => {
+    const newCheckedInState = !guest.checked_in;
 
     const { error } = await supabase
       .from("guests")
       .update({
-        checked_in: true,
-        checked_in_at: new Date().toISOString(),
+        checked_in: newCheckedInState,
+        checked_in_at: newCheckedInState ? new Date().toISOString() : null,
       })
       .eq("id", guest.id);
 
     if (error) {
       toast({
         title: "Error",
-        description: "Failed to check in guest",
+        description: "Failed to update check-in status",
         variant: "destructive",
       });
     } else {
       toast({
         title: "Success!",
-        description: `${guest.name} checked in successfully`,
+        description: `${guest.name} ${newCheckedInState ? 'checked in' : 'check-in removed'}`,
       });
       fetchGuests();
     }
@@ -199,14 +195,24 @@ const GuestList = () => {
     navigate("/auth");
   };
 
-  const vipGuests = guests.filter((g) => g.guest_type === "vip");
-  const regularGuests = guests.filter((g) => g.guest_type === "regular");
+  const filteredGuests = guests.filter((g) =>
+    g.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const vipGuests = filteredGuests.filter((g) => g.guest_type === "vip");
+  const regularGuests = filteredGuests.filter((g) => g.guest_type === "regular");
 
   const GuestCard = ({ guest }: { guest: Guest }) => (
     <Card className={`${guest.guest_type === "vip" ? "border-vip/30 bg-vip/5" : ""}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 flex-1">
+            <div className="flex items-center pt-1">
+              <Checkbox
+                checked={guest.checked_in}
+                onCheckedChange={() => handleCheckInToggle(guest)}
+                className="h-5 w-5"
+              />
+            </div>
             <div className={`p-2 rounded-lg ${guest.guest_type === "vip" ? "bg-gradient-to-br from-vip to-amber-400" : "bg-primary"}`} style={guest.guest_type === "vip" ? { boxShadow: 'var(--shadow-vip-glow)' } : {}}>
               {guest.guest_type === "vip" ? (
                 <Crown className="w-5 h-5 text-vip-foreground" />
@@ -229,17 +235,6 @@ const GuestList = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            {!guest.checked_in && (
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => handleManualCheckIn(guest)}
-                className="bg-green-600 hover:bg-green-700"
-                title="Check in guest"
-              >
-                <Check className="w-4 h-4" />
-              </Button>
-            )}
             <Button
               size="sm"
               variant="outline"
@@ -356,6 +351,19 @@ const GuestList = () => {
           </DialogContent>
         </Dialog>
 
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search guests by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -363,7 +371,7 @@ const GuestList = () => {
         ) : (
           <Tabs defaultValue="all" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="all">All ({guests.length})</TabsTrigger>
+              <TabsTrigger value="all">All ({filteredGuests.length})</TabsTrigger>
               <TabsTrigger value="vip">
                 <Crown className="w-4 h-4 mr-2" />
                 VIP ({vipGuests.length})
@@ -371,10 +379,10 @@ const GuestList = () => {
               <TabsTrigger value="regular">Regular ({regularGuests.length})</TabsTrigger>
             </TabsList>
             <TabsContent value="all" className="space-y-4 mt-6">
-              {guests.map((guest) => (
+              {filteredGuests.map((guest) => (
                 <GuestCard key={guest.id} guest={guest} />
               ))}
-              {guests.length === 0 && (
+              {filteredGuests.length === 0 && (
                 <Card>
                   <CardContent className="p-12 text-center">
                     <p className="text-muted-foreground">No guests added yet</p>

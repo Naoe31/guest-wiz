@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle, Crown, User, Loader2, Scan, Keyboard } from "lucide-react";
+import { ArrowLeft, CheckCircle, Crown, User, Scan } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 
 type Guest = {
@@ -18,8 +18,6 @@ type Guest = {
 
 const CheckIn = () => {
   const [scanning, setScanning] = useState(false);
-  const [manualMode, setManualMode] = useState(false);
-  const [manualCode, setManualCode] = useState("");
   const [checkedInGuest, setCheckedInGuest] = useState<Guest | null>(null);
   const [html5QrCode, setHtml5QrCode] = useState<Html5Qrcode | null>(null);
   const navigate = useNavigate();
@@ -88,7 +86,6 @@ const CheckIn = () => {
   const startScanner = async () => {
     setScanning(true);
     setCheckedInGuest(null);
-    setManualMode(false);
 
     // Request permission first
     const hasPermission = await requestCameraPermission();
@@ -141,13 +138,6 @@ const CheckIn = () => {
     setScanning(false);
   };
 
-  const handleManualSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manualCode.trim()) {
-      await handleCheckIn(manualCode.trim());
-      setManualCode("");
-    }
-  };
 
   const handleCheckIn = async (qrCode: string) => {
     try {
@@ -224,52 +214,18 @@ const CheckIn = () => {
             <p className="text-muted-foreground">Scan guest QR codes to check them in</p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {!scanning && !manualMode && !checkedInGuest && (
+            {!scanning && !checkedInGuest && (
               <div className="flex flex-col items-center gap-6 py-8">
                 <div className="w-32 h-32 bg-gradient-to-br from-primary to-accent rounded-3xl flex items-center justify-center" style={{ boxShadow: 'var(--shadow-glow)' }}>
                   <CheckCircle className="w-16 h-16 text-primary-foreground" />
                 </div>
-                <div className="w-full max-w-xs space-y-3">
+                <div className="w-full max-w-xs">
                   <Button size="lg" onClick={startScanner} className="w-full">
                     <Scan className="w-5 h-5 mr-2" />
                     Scan QR Code
                   </Button>
-                  <Button size="lg" onClick={() => setManualMode(true)} variant="outline" className="w-full">
-                    <Keyboard className="w-5 h-5 mr-2" />
-                    Enter Code Manually
-                  </Button>
                 </div>
               </div>
-            )}
-
-            {manualMode && !checkedInGuest && (
-              <form onSubmit={handleManualSubmit} className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="manualCode">Guest QR Code</Label>
-                  <Input
-                    id="manualCode"
-                    value={manualCode}
-                    onChange={(e) => setManualCode(e.target.value)}
-                    placeholder="Enter guest QR code"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit" className="flex-1">
-                    Check In
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setManualMode(false);
-                      setManualCode("");
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
             )}
 
             {scanning && (
@@ -278,25 +234,13 @@ const CheckIn = () => {
                   id="qr-reader"
                   className="rounded-lg overflow-hidden border-2 border-primary"
                 />
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={stopScanner}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => {
-                      stopScanner();
-                      setManualMode(true);
-                    }}
-                  >
-                    Enter Manually
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={stopScanner}
+                >
+                  Cancel
+                </Button>
               </div>
             )}
 
