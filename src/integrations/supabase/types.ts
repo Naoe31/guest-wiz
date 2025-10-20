@@ -60,6 +60,7 @@ export type Database = {
         Row: {
           approved: boolean | null
           created_at: string
+          email: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
@@ -67,6 +68,7 @@ export type Database = {
         Insert: {
           approved?: boolean | null
           created_at?: string
+          email?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
@@ -74,6 +76,7 @@ export type Database = {
         Update: {
           approved?: boolean | null
           created_at?: string
+          email?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string

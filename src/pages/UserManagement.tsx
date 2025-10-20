@@ -57,13 +57,10 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     setLoading(true);
     
-    // Get all user roles with auth data
+    // Get all user roles with email
     const { data: rolesData, error: rolesError } = await supabase
       .from("user_roles")
-      .select(`
-        *,
-        email:user_id
-      `)
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (rolesError) {
@@ -76,14 +73,7 @@ const UserManagement = () => {
       return;
     }
 
-    // Since we can't access auth.users directly from client,
-    // we'll show user_id as identifier
-    const usersWithEmails: User[] = rolesData.map(role => ({
-      ...role,
-      email: role.user_id.substring(0, 8) + '...' // Show partial ID
-    }));
-
-    setUsers(usersWithEmails);
+    setUsers(rolesData || []);
     setLoading(false);
   };
 
@@ -168,7 +158,7 @@ const UserManagement = () => {
                               <UserIcon className="w-5 h-5 text-amber-500" />
                             </div>
                             <div>
-                              <p className="font-medium">{user.email}</p>
+                              <p className="font-medium">{user.email || 'User ID: ' + user.user_id.substring(0, 8) + '...'}</p>
                               <p className="text-sm text-muted-foreground">
                                 Role: {user.role}
                               </p>
@@ -211,7 +201,7 @@ const UserManagement = () => {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-medium">{user.email}</p>
+                              <p className="font-medium">{user.email || 'User ID: ' + user.user_id.substring(0, 8) + '...'}</p>
                               <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                                 {user.role.toUpperCase()}
                               </Badge>

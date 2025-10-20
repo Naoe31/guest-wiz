@@ -213,7 +213,7 @@ const CheckIn = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-vip/5">
       <div className="container mx-auto p-6 max-w-2xl">
         <div className="mb-8">
-          <Button variant="ghost" onClick={() => navigate("/")}>
+          <Button variant="ghost" onClick={() => navigate("/guest-list")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Guest List
           </Button>
