@@ -20,11 +20,9 @@ export type Database = {
           checked_in_at: string | null
           created_at: string
           created_by: string | null
-          email: string | null
           guest_type: Database["public"]["Enums"]["guest_type"]
           id: string
           name: string
-          phone: string | null
           qr_code: string
           updated_at: string
         }
@@ -33,11 +31,9 @@ export type Database = {
           checked_in_at?: string | null
           created_at?: string
           created_by?: string | null
-          email?: string | null
           guest_type?: Database["public"]["Enums"]["guest_type"]
           id?: string
           name: string
-          phone?: string | null
           qr_code: string
           updated_at?: string
         }
@@ -46,11 +42,9 @@ export type Database = {
           checked_in_at?: string | null
           created_at?: string
           created_by?: string | null
-          email?: string | null
           guest_type?: Database["public"]["Enums"]["guest_type"]
           id?: string
           name?: string
-          phone?: string | null
           qr_code?: string
           updated_at?: string
         }

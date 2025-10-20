@@ -12,7 +12,6 @@ import { Html5Qrcode } from "html5-qrcode";
 type Guest = {
   id: string;
   name: string;
-  email: string | null;
   guest_type: "vip" | "regular";
   checked_in: boolean;
 };
@@ -318,10 +317,7 @@ const CheckIn = () => {
                       ✓ CHECKED IN
                     </span>
                   </div>
-                  <h3 className="text-2xl font-bold mb-2">{checkedInGuest.name}</h3>
-                  {checkedInGuest.email && (
-                    <p className="text-muted-foreground mb-4">{checkedInGuest.email}</p>
-                  )}
+                  <h3 className="text-2xl font-bold mb-4">{checkedInGuest.name}</h3>
                   <div className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${checkedInGuest.guest_type === "vip" ? "bg-vip text-vip-foreground" : "bg-primary text-primary-foreground"}`}>
                     {checkedInGuest.guest_type === "vip" ? "VIP Guest" : "Regular Guest"}
                   </div>

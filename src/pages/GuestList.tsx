@@ -16,8 +16,6 @@ import QRCode from "qrcode";
 type Guest = {
   id: string;
   name: string;
-  email: string | null;
-  phone: string | null;
   guest_type: "vip" | "regular";
   checked_in: boolean;
   checked_in_at: string | null;
@@ -34,8 +32,6 @@ const GuestList = () => {
   const [qrCodeData, setQrCodeData] = useState("");
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
-    phone: "",
     guest_type: "regular" as "vip" | "regular",
   });
   const navigate = useNavigate();
@@ -129,7 +125,7 @@ const GuestList = () => {
         description: "Guest added successfully",
       });
       setDialogOpen(false);
-      setFormData({ name: "", email: "", phone: "", guest_type: "regular" });
+      setFormData({ name: "", guest_type: "regular" });
       fetchGuests();
     }
   };
@@ -219,15 +215,13 @@ const GuestList = () => {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-2">
                 <h3 className="font-semibold text-foreground">{guest.name}</h3>
                 <Badge variant={guest.guest_type === "vip" ? "default" : "secondary"} className={guest.guest_type === "vip" ? "bg-vip text-vip-foreground" : ""}>
                   {guest.guest_type.toUpperCase()}
                 </Badge>
               </div>
-              {guest.email && <p className="text-sm text-muted-foreground">{guest.email}</p>}
-              {guest.phone && <p className="text-sm text-muted-foreground">{guest.phone}</p>}
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2">
                 <span className={`text-xs px-2 py-1 rounded-full ${guest.checked_in ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"}`}>
                   {guest.checked_in ? "✓ Checked In" : "Not Checked In"}
                 </span>
@@ -315,31 +309,12 @@ const GuestList = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="name">Guest Name *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Guest name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="guest@example.com"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="+1234567890"
+                  placeholder="Enter guest name"
                 />
               </div>
               <div>
