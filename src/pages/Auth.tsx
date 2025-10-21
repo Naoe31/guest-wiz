@@ -6,15 +6,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, QrCode } from "lucide-react";
+import { Loader2, QrCode, Scan } from "lucide-react";
+import { FaceCapture } from "@/components/FaceCapture";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showFaceCapture, setShowFaceCapture] = useState(false);
+  const [faceMode, setFaceMode] = useState<"register" | "verify">("verify");
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const ADMIN_EMAIL = "naoe31.dev@proton.me";
 
   useEffect(() => {
     checkAuthAndApproval();
@@ -48,23 +54,104 @@ const Auth = () => {
     }
   };
 
+  const handleFaceCapture = async (imageData: string) => {
+    if (!pendingUserId) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-face', {
+        body: { 
+          capturedImage: imageData, 
+          userId: pendingUserId,
+          action: faceMode
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: faceMode === "register" ? "Face Registered!" : "Face Verified!",
+          description: faceMode === "register" 
+            ? "Your face has been registered successfully." 
+            : "Face verification successful. Welcome back!",
+        });
+        setShowFaceCapture(false);
+        if (faceMode === "verify") {
+          await checkAuthAndApproval();
+        }
+      } else {
+        toast({
+          title: "Verification Failed",
+          description: data?.message || "Face verification failed. Please try again.",
+          variant: "destructive",
+        });
+        if (faceMode === "verify") {
+          await supabase.auth.signOut();
+        }
+      }
+    } catch (error: any) {
+      console.error('Face verification error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Face verification failed",
+        variant: "destructive",
+      });
+      if (faceMode === "verify") {
+        await supabase.auth.signOut();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Restrict to admin email only
+    if (email !== ADMIN_EMAIL) {
+      toast({
+        title: "Access Denied",
+        description: "Only the administrator can access this system.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully signed in.",
-        });
+        
+        // Check if face is registered
+        const { data: faceData } = await supabase
+          .from('admin_face_auth')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .single();
+
+        setPendingUserId(data.user.id);
+
+        if (!faceData) {
+          // First time login - register face
+          setFaceMode("register");
+          setShowFaceCapture(true);
+          toast({
+            title: "Face Registration Required",
+            description: "Please register your face for secure authentication.",
+          });
+        } else {
+          // Face already registered - verify
+          setFaceMode("verify");
+          setShowFaceCapture(true);
+        }
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -74,7 +161,7 @@ const Auth = () => {
         if (error) throw error;
         toast({
           title: "Account created!",
-          description: "You can now sign in with your credentials.",
+          description: "Please sign in to register your face authentication.",
         });
         setIsLogin(true);
       }
@@ -89,6 +176,37 @@ const Auth = () => {
     }
   };
 
+  if (showFaceCapture) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/5 via-background to-vip/5">
+        <Card className="w-full max-w-2xl shadow-xl border-border/50">
+          <CardHeader className="space-y-3 text-center">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center mb-2" style={{ boxShadow: 'var(--shadow-glow)' }}>
+              <Scan className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Face Authentication</CardTitle>
+            <CardDescription>
+              {faceMode === "register" 
+                ? "Register your face for secure biometric authentication"
+                : "Verify your identity using facial recognition"
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FaceCapture 
+              onCapture={handleFaceCapture} 
+              onCancel={() => {
+                setShowFaceCapture(false);
+                supabase.auth.signOut();
+              }}
+              mode={faceMode}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/5 via-background to-vip/5">
       <Card className="w-full max-w-md shadow-xl border-border/50">
@@ -98,7 +216,7 @@ const Auth = () => {
           </div>
           <CardTitle className="text-2xl font-bold">Guest Check-In System</CardTitle>
           <CardDescription>
-            {isLogin ? "Sign in to manage your guest list" : "Create an account to get started"}
+            {isLogin ? "Administrator access with facial recognition" : "Create administrator account"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -108,12 +226,15 @@ const Auth = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@example.com"
+                placeholder="naoe31.dev@proton.me"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Only {ADMIN_EMAIL} can access this system
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>

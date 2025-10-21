@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_face_auth: {
+        Row: {
+          created_at: string | null
+          face_image_data: string
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          face_image_data: string
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          face_image_data?: string
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       guests: {
         Row: {
           checked_in: boolean
