@@ -28,8 +28,19 @@ const Auth = () => {
     checkAuthAndApproval();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        await checkAuthAndApproval();
+      if (event === 'SIGNED_IN' && session) {
+        // Check if this is an admin user (has real email, not @staff.local)
+        const isAdmin = session.user.email && !session.user.email.endsWith('@staff.local');
+        
+        if (isAdmin) {
+          // For admin login via magic link, trigger face verification
+          setPendingUserId(session.user.id);
+          setFaceMode("verify");
+          setShowFaceCapture(true);
+        } else {
+          // For staff, proceed with normal flow
+          await checkAuthAndApproval();
+        }
       }
     });
 
