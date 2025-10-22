@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Crown, User, LogOut, QrCode as QrCodeIcon, Users, Search } from "lucide-react";
+import { Loader2, Plus, Trash2, Crown, User, LogOut, QrCode as QrCodeIcon, Users, Search, KeyRound } from "lucide-react";
 import QRCode from "qrcode";
 
 type Guest = {
@@ -282,6 +282,10 @@ const GuestList = () => {
             <Button onClick={() => navigate("/check-in")} variant="outline">
               <QrCodeIcon className="w-4 h-4 mr-2" />
               Check-In
+            </Button>
+            <Button onClick={() => navigate("/change-password")} variant="outline">
+              <KeyRound className="w-4 w-4 mr-2" />
+              Password
             </Button>
             <Button onClick={handleSignOut} variant="outline">
               <LogOut className="w-4 h-4 mr-2" />
